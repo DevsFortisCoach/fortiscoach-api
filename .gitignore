@@ -1,0 +1,12 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+.next/
+out/
+build
+.env
+.env*.local
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store

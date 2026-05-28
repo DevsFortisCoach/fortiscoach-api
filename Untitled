@@ -1,0 +1,13 @@
+GET / 200 in 2.2s (compile: 1997ms, render: 190ms)
+Login error: Error: DATABASE_URL no está definida
+    at getPool (lib/db.ts:9:13)
+    at query (lib/db.ts:23:13)
+    at POST (app/api/auth/login/route.ts:47:43)
+   7 |     const connectionString = process.env.DATABASE_URL;
+   8 |     if (!connectionString) {
+>  9 |       throw new Error("DATABASE_URL no está definida");
+     |             ^
+  10 |     }
+  11 |     pool = new Pool({
+  12 |       connectionString,
+ POST /api/auth/login 500 in 783ms (compile: 436ms, proxy.ts: 92ms, render: 255ms)
