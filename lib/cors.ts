@@ -1,9 +1,11 @@
-import { TENANT_SLUG_HEADER } from "@/lib/tenant";
-
 const LOCALHOST_HOSTS = new Set(["localhost", "127.0.0.1"]);
 
-function tenantBaseDomain(): string {
-  return (process.env.TENANT_BASE_DOMAIN ?? "fortiscoach.cl").toLowerCase();
+function configuredOrigins(): string[] {
+  const raw = process.env.FRONTEND_URL ?? "http://localhost:3000";
+  return raw
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
 }
 
 function isAllowedHostname(hostname: string): boolean {
@@ -11,20 +13,23 @@ function isAllowedHostname(hostname: string): boolean {
   if (LOCALHOST_HOSTS.has(host)) return true;
   if (host.endsWith(".localhost")) return true;
 
-  const base = tenantBaseDomain();
-  if (host === base || host === `www.${base}`) return true;
-  if (host.endsWith(`.${base}`)) return true;
-
   if (process.env.ALLOW_VERCEL_PREVIEW === "true" && host.endsWith(".vercel.app")) {
     return true;
   }
 
-  const extra = process.env.CORS_EXTRA_HOSTS?.split(",").map((h) => h.trim().toLowerCase()) ?? [];
-  return extra.includes(host);
+  return false;
 }
 
 export function isAllowedOrigin(origin: string | null | undefined): boolean {
   if (!origin) return true;
+
+  const normalized = origin.replace(/\/$/, "");
+  for (const allowed of configuredOrigins()) {
+    if (normalized === allowed.replace(/\/$/, "")) {
+      return true;
+    }
+  }
+
   try {
     const { hostname } = new URL(origin);
     return isAllowedHostname(hostname);
@@ -34,10 +39,7 @@ export function isAllowedOrigin(origin: string | null | undefined): boolean {
 }
 
 function defaultAllowOrigin(): string {
-  return (
-    process.env.CORS_DEFAULT_ORIGIN ??
-    `https://${tenantBaseDomain()}`
-  );
+  return configuredOrigins()[0] ?? "http://localhost:3000";
 }
 
 export function getCorsHeaders(origin?: string | null): Record<string, string> {
@@ -47,7 +49,7 @@ export function getCorsHeaders(origin?: string | null): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "GET, POST, PATCH, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": `Content-Type, Authorization, ${TENANT_SLUG_HEADER}`,
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Max-Age": "86400",
   };
 }

@@ -4,10 +4,6 @@ import { verifyPassword } from "@/lib/password";
 import { signToken } from "@/lib/auth/jwt";
 import { getCorsHeaders } from "@/lib/cors";
 import { jsonResponse, errorResponse } from "@/lib/api-response";
-import {
-  resolveTenantFromRequest,
-  TenantResolutionError,
-} from "@/lib/tenant";
 
 interface UsuarioRow {
   id: string;
@@ -19,6 +15,7 @@ interface UsuarioRow {
   activo: boolean;
   password_hash: string;
   requiere_cambio_password: boolean;
+  gimnasio_nombre: string;
 }
 
 const VALID_ROLES = ["recepcion", "socio", "entrenador"] as const;
@@ -90,15 +87,6 @@ export async function POST(request: NextRequest) {
   const origin = request.headers.get("Origin");
   try {
     const body = await request.json();
-    const bodySlug =
-      typeof body.subdivinio_slug === "string"
-        ? body.subdivinio_slug
-        : typeof body.tenant_slug === "string"
-          ? body.tenant_slug
-          : null;
-
-    const tenant = await resolveTenantFromRequest(request, bodySlug);
-
     const correo = typeof body.correo === "string" ? body.correo.trim() : "";
     const contraseña =
       typeof body.contraseña === "string" ? body.contraseña : "";
@@ -117,12 +105,15 @@ export async function POST(request: NextRequest) {
     }
 
     const { rows: usuarios } = await query<UsuarioRow>(
-      `SELECT id, gimnasio_id, sucursal_id, correo, nombre_completo, telefono, activo, password_hash,
-              COALESCE(requiere_cambio_password, false) AS requiere_cambio_password
-       FROM usuarios
-       WHERE gimnasio_id = $1 AND lower(correo) = lower($2)
+      `SELECT u.id, u.gimnasio_id, u.sucursal_id, u.correo, u.nombre_completo, u.telefono,
+              u.activo, u.password_hash,
+              COALESCE(u.requiere_cambio_password, false) AS requiere_cambio_password,
+              g.nombre AS gimnasio_nombre
+       FROM usuarios u
+       JOIN gimnasios g ON g.id = u.gimnasio_id
+       WHERE lower(u.correo) = lower($1)
        LIMIT 1`,
-      [tenant.gimnasioId, correo]
+      [correo]
     );
 
     const usuario = usuarios[0];
@@ -154,9 +145,9 @@ export async function POST(request: NextRequest) {
     return jsonResponse(
       {
         token,
-        tenant: {
-          subdivinio_slug: tenant.subdivinioSlug,
-          nombre: tenant.nombre,
+        gimnasio: {
+          id: usuario.gimnasio_id,
+          nombre: usuario.gimnasio_nombre,
         },
         usuario: {
           id: usuario.id,
@@ -164,6 +155,7 @@ export async function POST(request: NextRequest) {
           nombre_completo: usuario.nombre_completo,
           telefono: usuario.telefono,
           gimnasio_id: usuario.gimnasio_id,
+          gimnasio_nombre: usuario.gimnasio_nombre,
           sucursal_id: usuario.sucursal_id,
           rol: resolved.rol,
           requiere_cambio_password: usuario.requiere_cambio_password,
@@ -173,10 +165,11 @@ export async function POST(request: NextRequest) {
       origin
     );
   } catch (e) {
-    if (e instanceof TenantResolutionError) {
-      return errorResponse(e.message, e.status, origin);
-    }
     console.error("Login error:", e);
-    return errorResponse("Error interno", 500, origin);
+    const detail =
+      process.env.NODE_ENV !== "production" && e instanceof Error
+        ? e.message
+        : "Error interno";
+    return errorResponse(detail, 500, origin);
   }
 }
