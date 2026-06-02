@@ -18,7 +18,13 @@ interface UsuarioRow {
   gimnasio_nombre: string;
 }
 
-const VALID_ROLES = ["recepcion", "socio", "entrenador"] as const;
+const VALID_ROLES = [
+  "admin_ti",
+  "gerencia",
+  "recepcion",
+  "socio",
+  "entrenador",
+] as const;
 
 export async function OPTIONS() {
   return new Response(null, {

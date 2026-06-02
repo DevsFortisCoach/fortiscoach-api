@@ -34,6 +34,7 @@ export async function sendAccessCredentialsMail(input: {
   gymName?: string;
   temporaryPassword: string;
   loginUrl?: string;
+  buttonLoginUrl?: string;
 }) {
   const loginUrl = input.loginUrl ?? getMailConfig().links.socioAppUrl;
   const template = buildAccessCredentialsTemplate({
@@ -42,6 +43,7 @@ export async function sendAccessCredentialsMail(input: {
     email: input.to,
     temporaryPassword: input.temporaryPassword,
     loginUrl,
+    buttonLoginUrl: input.buttonLoginUrl,
   });
   const { identity } = getMailConfig();
 

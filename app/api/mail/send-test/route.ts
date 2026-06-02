@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { errorResponse, jsonResponse } from "@/lib/api-response";
+import { requireCanSendMail } from "@/lib/auth/request";
 import { getCorsHeaders } from "@/lib/cors";
 import { sendTestMail } from "@/lib/mail/send";
 
@@ -14,6 +15,8 @@ export async function POST(request: NextRequest) {
   const origin = request.headers.get("Origin");
 
   try {
+    await requireCanSendMail(request);
+
     const body = await request.json();
     const to = typeof body.to === "string" ? body.to.trim() : "";
     const recipientName =
@@ -38,6 +41,12 @@ export async function POST(request: NextRequest) {
       origin
     );
   } catch (e) {
+    if (e instanceof Error && e.message === "UNAUTHORIZED") {
+      return errorResponse("No autorizado", 401, origin);
+    }
+    if (e instanceof Error && e.message === "FORBIDDEN") {
+      return errorResponse("Sin permiso para enviar correos", 403, origin);
+    }
     console.error("Send test mail error:", e);
     return errorResponse("No se pudo enviar el correo de prueba", 500, origin);
   }

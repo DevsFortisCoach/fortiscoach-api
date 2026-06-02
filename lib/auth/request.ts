@@ -37,3 +37,8 @@ export async function requireCanEditSocios(request: Request): Promise<JwtPayload
   }
   return auth.payload;
 }
+
+export async function requireCanSendMail(request: Request): Promise<JwtPayload> {
+  const auth = await requireAuth(request, ["admin_ti", "gerencia", "recepcion"]);
+  return auth.payload;
+}
