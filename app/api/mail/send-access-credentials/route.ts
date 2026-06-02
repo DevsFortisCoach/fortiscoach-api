@@ -14,6 +14,17 @@ type UsuarioMailRow = {
   requiere_cambio_password: boolean;
 };
 
+function buildButtonLoginUrl(baseUrl: string, accessToken: string) {
+  const url = new URL(baseUrl);
+
+  if (url.pathname === "/" || url.pathname === "") {
+    url.pathname = "/login";
+  }
+
+  url.searchParams.set("access_token", accessToken);
+  return url.toString();
+}
+
 export async function OPTIONS() {
   return new Response(null, {
     status: 204,
@@ -74,8 +85,8 @@ export async function POST(request: NextRequest) {
       sucursal_id: usuario.sucursal_id,
       requiere_cambio_password: usuario.requiere_cambio_password,
     });
-    const safeBase = (loginUrl || "https://app.fortiscoach.cl").replace(/\/$/, "");
-    const buttonLoginUrl = `${safeBase}?access_token=${encodeURIComponent(buttonLoginToken)}`;
+    const safeBase = loginUrl?.trim() || "https://app.fortiscoach.cl/login";
+    const buttonLoginUrl = buildButtonLoginUrl(safeBase, buttonLoginToken);
 
     const result = await sendAccessCredentialsMail({
       to,
